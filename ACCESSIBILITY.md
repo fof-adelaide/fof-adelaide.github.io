@@ -24,7 +24,7 @@ Measured from the rendered page in every state. Normal text needs 4.5:1. Large t
 | Black | Coral | 6.43 | 4.5 | Selected chip |
 | Black at 70% | Off-White | 5.90 | 4.5 | Placeholder |
 | Off-White | Purple | 4.19 | 3 | Next and Send, always 24 px or more |
-| Lime | Purple | 4.15 | 3 | Thanks sticker, always 44 px or more |
+| Lime | Purple | 4.15 | 3 | Thanks sticker. It shrinks to fit a long name but never goes under 24 px |
 
 Purple and Dark Blue aren't used as selected chip fills. Off-White on Purple is too low at chip size, and a dark chip would need a different check from the others. Every selected chip has the same black check and black text.
 
@@ -84,5 +84,6 @@ Tested with a stand-in for the Sheet, so no test touched the real one.
 
 - **Not tested with a screen reader.** The structure is right according to the scan, but it's worth 10 minutes with VoiceOver before this goes public.
 - **Only tested in Chromium.** Safari and Firefox haven't been run, including on iPhone.
+- **Long names.** A name too long to fit the thanks sticker at 24 px gets plain "Thanks!". Letters Funnel Sans doesn't have, such as Vietnamese ones, fall back to a system font.
 - **The stickers are pointer-only.** They're decoration and carry no information, so keyboard users miss nothing they need. The "Now throw some stickers around" line is hidden when motion is off.
 - **Tapping Something else moves focus into its field.** That's a small change of context under 3.2.2, kept because the next step is always to type. It only happens with a mouse or touch, so arrow keys can still move through the options.
