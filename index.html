@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Friends of Figma Adelaide</title>
+  <meta name="description" content="Four quick questions to help shape future Friends of Figma events in Adelaide.">
+  <meta name="theme-color" content="#1E1E1E">
+  <meta property="og:title" content="Friends of Figma Adelaide: help shape our next meetup">
+  <meta property="og:description" content="Four quick questions to help shape future Friends of Figma events in Adelaide.">
+  <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="preload" href="fonts/FunnelSans-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <canvas id="scene" aria-hidden="true"></canvas>
+
+  <div class="page">
+    <header class="lockup" data-solid>
+      <img src="assets/logotype-lined.svg" alt="Friends of Figma" width="1588" height="300">
+      <span class="chapter-label"><img src="assets/chapter-label.svg" alt="Adelaide" width="3850" height="1000"></span>
+    </header>
+
+    <main class="card" id="card" data-solid>
+      <div class="card-inner" id="card-inner">
+        <noscript><p class="noscript">This form needs JavaScript. Turn it on, then reload the page.</p></noscript>
+      </div>
+    </main>
+
+    <footer class="page-footer">
+      <button type="button" class="motion-toggle" id="motion-toggle" hidden></button>
+      <p class="preview-note" id="preview-note" hidden>Preview: answers aren’t being saved</p>
+    </footer>
+  </div>
+
+  <canvas id="confetti" aria-hidden="true"></canvas>
+  <p class="sr-only" id="status" role="status"></p>
+
+  <script src="vendor/matter.min.js"></script>
+  <script src="data/stickers.js"></script>
+  <script src="config.js"></script>
+  <script src="scene.js"></script>
+  <script src="form.js"></script>
+</body>
+</html>

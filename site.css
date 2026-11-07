@@ -1,0 +1,531 @@
+/* Friends of Figma Adelaide microsite. Tokens mirror the Figma file (Adelaide Chapter DS). */
+@font-face {
+  font-family: "Funnel Sans";
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/FunnelSans-Regular.woff2") format("woff2");
+}
+
+:root {
+  /* Core */
+  --core-black: #1E1E1E;
+  --core-sage: #95B9AC;
+  --core-light-gray: #E2E2E2;
+  --core-off-white: #F5F5F5;
+
+  /* Chapter palette */
+  --chapter-1: #FF7676; /* Coral */
+  --chapter-2: #E4FF97; /* Lime */
+  --chapter-3: #24CB71; /* Kelly Green */
+  --chapter-4: #33DFDF; /* Teal */
+  --chapter-5: #874FFF; /* Purple */
+  --chapter-6: #122F76; /* Dark Blue */
+
+  /* Extended, for the one-off error message */
+  --extended-maroon: #721C1C;
+
+  /* Black at 70% on the Off-White card. It's a placeholder colour that still reaches 4.5:1. */
+  --placeholder: rgb(30 30 30 / 0.7);
+
+  /* Type: the Figma scale, sized for a screen instead of a 1080 px post.
+     Sizes are in rem so they follow the reader's browser settings, and each maximum stays under
+     2.5 times its minimum so browser zoom can always reach 200%. */
+  --type-display: clamp(2.75rem, min(8vw, 9.4vh), 5.5rem);
+  --type-headline: clamp(1.875rem, min(5.4vw, 6vh), 3.75rem);
+  --type-name: clamp(1.5rem, min(3.2vw, 3.8vh), 2.125rem); /* Never under 24 px: buttons rely on it to count as large text */
+  --type-role: clamp(1.0625rem, min(2vw, 2.3vh), 1.3125rem);
+  --type-body: clamp(1.0625rem, min(2vw, 2.3vh), 1.3125rem);
+  --type-tag: clamp(0.9375rem, 1.6vw, 1.0625rem);
+
+  /* Space and radius */
+  --space-pad: clamp(24px, min(6vw, 5.5vh), 64px);
+  --space-l: clamp(20px, min(4vw, 3.4vh), 40px);
+  --space-m: clamp(14px, min(2.4vw, 2.2vh), 24px);
+  --space-s: 10px;
+  --radius-tag: 4px;
+  --gutter: max(16px, env(safe-area-inset-left));
+  --keyline: 10px; /* The die-cut outline from the video's labels */
+  --page-top: clamp(14px, 4vh, 48px);
+  --page-gap: clamp(14px, 2.4vh, 24px);
+  --page-end: 16px;
+  --footer: calc(46px + var(--page-gap)); /* The Pause button and the gap above it, while it sits in the page */
+  --logo-h: min(clamp(40px, min(6vw, 6vh), 60px), calc((100vw - 2 * var(--gutter)) / 8.25));
+  --target: 48px; /* Well above the 24 px minimum in WCAG 2.2 */
+}
+
+/* Desktop runs about 7% smaller than the scale above, apart from the question. Phones keep the sizes above. */
+@media (min-width: 900px) {
+  :root {
+    --type-display: clamp(2.75rem, 8.75vh, 5.125rem);
+    --type-headline: clamp(1.875rem, 4.76vh, 3rem); /* The question: about 20% smaller than the scale above */
+    --type-name: clamp(1.5rem, 3.5vh, 2rem);
+    --type-role: clamp(1.0625rem, 2.14vh, 1.21875rem);
+    --type-body: clamp(1.0625rem, 2.14vh, 1.21875rem);
+    --type-tag: 1rem;
+    --page-top: clamp(24px, 8vh, 96px);
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { background: var(--core-black); -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--core-black);
+  color: var(--core-off-white);
+  font-family: "Funnel Sans", system-ui, sans-serif;
+  font-weight: 400;
+  font-size: var(--type-body);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- Layers ---------- */
+#scene, #confetti { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+#scene { z-index: 0; touch-action: pan-y; }
+#confetti { z-index: 3; pointer-events: none; }
+
+/* Anchored to the top, so the logo, the question and the first answer stay put between steps.
+   When a step needs more room, the card only grows downwards. */
+.page {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--page-gap);
+  padding: var(--page-top) var(--gutter) var(--page-end);
+  pointer-events: none; /* Taps in the empty space reach the stickers */
+}
+.lockup, .card, .page-footer > * { pointer-events: auto; }
+
+/* ---------- Logo/Lockup, Lined. Proportions come from the component. ---------- */
+.lockup {
+  display: flex;
+  height: var(--logo-h);
+  gap: calc(var(--logo-h) * 0.103);
+  flex: none;
+  animation: drop-in 0.7s cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+.lockup img { display: block; height: 100%; width: auto; }
+.chapter-label {
+  display: flex;
+  align-items: center;
+  padding: 0 calc(var(--logo-h) * 0.338);
+  background: var(--core-sage);
+  border-radius: calc(var(--logo-h) * 0.05);
+}
+.chapter-label img { height: calc(var(--logo-h) * 0.55); } /* The name is outlined art, like the logotype */
+
+/* ---------- Card: the Off-White theme ---------- */
+.card {
+  width: 100%;
+  max-width: 47.5rem; /* 760 px at the default text size */
+  flex: none;
+  background: var(--core-off-white);
+  color: var(--core-black);
+  border-radius: var(--radius-tag);
+  box-shadow: 0 0 0 var(--keyline) var(--core-black);
+  overflow: hidden;
+  transition: height 0.38s cubic-bezier(0.25, 1, 0.4, 1);
+  animation: drop-in 0.7s 0.08s cubic-bezier(0.3, 1.25, 0.5, 1) both;
+}
+.card-inner { padding: var(--space-pad); }
+
+@keyframes drop-in {
+  from { opacity: 0; transform: translateY(-36px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- Progress ---------- */
+.progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-m);
+  margin-bottom: var(--space-l);
+}
+.tag { /* Post/Tag on the Off-White theme */
+  display: inline-block;
+  padding: 7px 12px;
+  background: var(--core-black);
+  color: var(--core-off-white);
+  border-radius: var(--radius-tag);
+  font-size: var(--type-tag);
+  line-height: 1.1;
+}
+.progress-shapes { display: flex; gap: 8px; }
+.progress-shapes svg { display: block; width: 22px; height: 22px; overflow: visible; }
+.progress-shapes path { fill: transparent; stroke: var(--core-black); stroke-width: 2; transition: fill 0.25s; }
+.progress-shapes .now path { fill: var(--core-black); }
+.progress-shapes .done path { fill: var(--done); }
+@media (max-width: 360px) {
+  /* Keeps the tag on one line on the smallest phones. */
+  .progress-shapes { gap: 4px; }
+  .progress-shapes svg { width: 18px; height: 18px; }
+}
+
+/* ---------- Questions ---------- */
+.q-title {
+  margin: 0;
+  font-size: var(--type-headline);
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere; /* A very long first name still has to fit */
+  text-wrap: balance;
+  outline: none;
+}
+.q-hint { margin: var(--space-s) 0 0; font-size: var(--type-body); }
+.answers { margin-top: var(--space-l); }
+
+.text-input {
+  display: block;
+  width: 100%;
+  min-height: var(--target);
+  padding: 8px 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid var(--core-black);
+  border-radius: 0;
+  color: inherit;
+  font: inherit;
+  font-size: var(--type-name);
+  letter-spacing: -0.02em;
+  outline: none;
+}
+.text-input:focus { border-bottom-color: var(--chapter-5); box-shadow: 0 2px 0 var(--chapter-5); }
+.text-input::placeholder, .text-area::placeholder { color: var(--placeholder); opacity: 1; }
+.text-input[aria-invalid="true"], .text-area[aria-invalid="true"] { border-color: var(--extended-maroon); }
+
+/* Chips hug their labels and wrap. They're native radios and checkboxes underneath,
+   so keyboard use and screen readers work without a component library. */
+.options { display: flex; flex-wrap: wrap; gap: var(--space-s); }
+.option { position: relative; display: block; cursor: pointer; }
+.option input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.face {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--target);
+  height: 100%;
+  padding: 8px 18px 8px 12px;
+  border: 2px solid var(--core-black);
+  border-radius: 24px;
+  font-size: var(--type-role);
+  line-height: 1.15;
+  transition: background-color 0.15s, color 0.15s;
+}
+.face small { display: block; margin-top: 2px; font-size: 0.84em; line-height: 1.2; }
+.option input:hover + .face { background: var(--core-light-gray); }
+.option input:checked + .face { background: var(--on); }
+.option input:focus-visible + .face { outline: 3px solid var(--chapter-5); outline-offset: 3px; }
+
+/* A stacked list suits a scale, where the order carries meaning. */
+.options--list { flex-direction: column; }
+.options--list .face { padding-top: 10px; padding-bottom: 10px; }
+
+.mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+.step--multi .mark { border-radius: var(--radius-tag); }
+.mark svg { display: block; width: 14px; height: 14px; fill: none; stroke: var(--on); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.option input:checked + .face .mark { background: currentColor; }
+.option input:checked + .face .mark svg { opacity: 1; }
+
+.option.just-picked .face { animation: pick 0.34s cubic-bezier(0.3, 1.7, 0.5, 1); }
+@keyframes pick {
+  0% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+
+/* The Other field. Tapping Something else opens it. It has to be visible straight away so it can take focus. */
+.other-field {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition: grid-template-rows 0.28s ease, visibility 0s 0.28s;
+}
+.other-field.open { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows 0.28s ease, visibility 0s; }
+.other-field > div { overflow: hidden; min-height: 0; margin-inline: -3px; } /* Room for the focus ring, and the field still lines up with the chips */
+.other-field .inner { padding: var(--space-m) 3px 3px; }
+.other-label { display: block; margin-bottom: 6px; font-size: var(--type-role); }
+.text-area {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  background: transparent;
+  border: 2px solid var(--core-black);
+  border-radius: var(--radius-tag);
+  color: inherit;
+  font: inherit;
+  font-size: var(--type-role);
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  resize: vertical;
+  outline: none;
+}
+.text-area:focus { border-color: var(--chapter-5); box-shadow: 0 0 0 1px var(--chapter-5); }
+
+.error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: var(--space-m) 0 0;
+  color: var(--extended-maroon);
+  font-size: var(--type-role);
+}
+.error::before {
+  content: "!";
+  flex: none;
+  width: 1.3em;
+  height: 1.3em;
+  border-radius: 50%;
+  background: var(--extended-maroon);
+  color: var(--core-off-white);
+  font-size: 0.85em;
+  line-height: 1.3em;
+  text-align: center;
+}
+/* Stays rendered while empty, so screen readers reliably announce a message when one arrives. */
+.error:empty { margin: 0; }
+.error:empty::before { content: none; }
+
+/* ---------- Actions ---------- */
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-m);
+  margin-top: var(--space-l);
+}
+.btn { /* Post/Pill on the Off-White theme */
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45em;
+  min-height: clamp(52px, 7vh, 60px);
+  margin-left: auto;
+  padding: 10px 32px;
+  background: var(--chapter-5);
+  color: var(--core-off-white);
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: var(--type-name);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 0.14s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.btn .arrow { display: block; transition: transform 0.18s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.arrow svg { display: block; width: 0.9em; height: 0.9em; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.btn:hover .arrow { transform: translateX(5px); }
+.btn:active { transform: scale(0.96); }
+.btn:focus-visible { outline: 3px solid var(--chapter-6); outline-offset: 3px; }
+.btn[aria-disabled="true"] { cursor: progress; }
+.btn[aria-disabled="true"] .arrow { display: none; }
+.btn--big { flex: 1; min-height: clamp(64px, 9vh, 84px); font-size: clamp(1.5rem, min(4vw, 4.2vh), 2.25rem); }
+@media (max-width: 560px) {
+  /* On a phone the big button gets the whole row, with Back underneath. */
+  .actions.is-last { flex-direction: column-reverse; align-items: stretch; gap: 8px; }
+  .actions.is-last .btn { margin-left: 0; flex: none; width: 100%; }
+  .actions.is-last .btn-back { align-self: center; }
+}
+
+.btn-back {
+  appearance: none;
+  flex: none;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px 4px;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  font-size: var(--type-role);
+  letter-spacing: -0.02em;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.btn-back:focus-visible { outline: 3px solid var(--chapter-5); outline-offset: 2px; }
+.btn-back[hidden] { display: none; }
+
+/* A honeypot for bots: hidden from people and from assistive tech */
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+/* ---------- Thanks ---------- */
+/* The card runs to the bottom of the screen, above the Pause button. The minimum sits here because the card's
+   height follows this content. On a small screen the content wins and the page scrolls. */
+.thanks {
+  --sticker: clamp(140px, min(56vw, 34vh), 460px);
+  --above: calc(var(--page-top) + var(--logo-h) + var(--page-gap));
+  --below: calc(var(--page-end) + var(--footer));
+  container-type: inline-size;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: calc(100vh - var(--above) - var(--below) - 2 * var(--space-pad) - 1px);
+  min-height: calc(100dvh - var(--above) - var(--below) - 2 * var(--space-pad) - 1px);
+}
+.thanks .progress { align-self: stretch; }
+@media (max-width: 360px) {
+  .thanks { --sticker: 140px; }
+}
+.word-sticker { /* Post/Word sticker, Pill, Purple + Lime */
+  display: inline-block;
+  max-width: 100%;
+  margin: 0 0 var(--space-l);
+  padding: 0.2em 0.42em 0.22em;
+  background: var(--chapter-5);
+  color: var(--chapter-2);
+  border-radius: 999px;
+  font-size: var(--type-display);
+  /* form.js sets --fit to the text's width in ems. The type shrinks to fit a long name, and never goes under 24 px,
+     which is what Lime on Purple needs to count as large text. */
+  font-size: max(1.5rem, min(var(--type-display), 100cqw / var(--fit, 1)));
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+  transform: rotate(-3deg);
+  animation: slam 0.62s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+@keyframes slam {
+  0% { opacity: 0; transform: rotate(-3deg) scale(1.7); }
+  18% { opacity: 1; }
+  45% { transform: rotate(-3deg) scale(0.93); }
+  72% { transform: rotate(-3deg) scale(1.03); }
+  100% { transform: rotate(-3deg) scale(1); }
+}
+.thanks-title { margin: 0 0 var(--space-s); font-size: var(--type-headline); font-weight: 400; line-height: 1.1; letter-spacing: -0.02em; outline: none; }
+.thanks-body { margin: 0; max-width: 26em; }
+.thanks-hint { margin: 0; font-size: var(--type-role); }
+.thanks-title, .thanks-body, .thanks-hint { animation: rise 0.5s 0.28s ease both; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+/* The hint sits at the bottom with one big sticker, cropped by the card: the brand's own stand-in for an illustration.
+   They share a row, so the sticker can never cover the text. */
+.thanks-foot {
+  align-self: stretch;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-m);
+  margin-top: auto;
+  padding-top: var(--space-l);
+}
+.thanks-sticker {
+  flex: none;
+  width: var(--sticker);
+  height: auto;
+  margin: 0 calc(var(--space-pad) * -1 - var(--sticker) * 0.14) calc(var(--space-pad) * -1 - var(--sticker) * 0.16) auto;
+  transform: rotate(-12deg);
+  animation: sticker-in 0.6s 0.2s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+@keyframes sticker-in {
+  from { opacity: 0; transform: translateY(70px) rotate(6deg); }
+  to { opacity: 1; transform: rotate(-12deg); }
+}
+
+/* ---------- Footer ---------- */
+.page-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 2px;
+  pointer-events: none;
+}
+/* Wide screens have room beside the card, so this moves to the corner and the card keeps the full height.
+   In em, so that a larger browser text size keeps it in the page instead of over the card. */
+@media (min-width: 70em) {
+  .page-footer {
+    position: fixed;
+    right: var(--gutter);
+    bottom: 16px;
+    flex-direction: column;
+    align-items: flex-end;
+    margin: 0;
+    padding: 0;
+  }
+  :root { --footer: 0px; }
+  .thanks { --sticker: clamp(140px, 40vh, 460px); }
+}
+.motion-toggle { /* Post/Tag on the Black theme */
+  appearance: none;
+  min-height: 44px;
+  padding: 8px 14px;
+  background: var(--core-off-white);
+  color: var(--core-black);
+  border: 0;
+  border-radius: var(--radius-tag);
+  font: inherit;
+  font-size: var(--type-tag);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  cursor: pointer;
+}
+.motion-toggle:hover { background: var(--core-light-gray); }
+.motion-toggle:focus-visible { outline: 3px solid var(--chapter-2); outline-offset: 3px; }
+.motion-toggle[hidden] { display: none; }
+.preview-note {
+  margin: 0;
+  padding: 7px 12px;
+  background: var(--core-off-white);
+  color: var(--core-black);
+  border-radius: var(--radius-tag);
+  font-size: 0.875rem;
+  line-height: 1.1;
+}
+.preview-note[hidden] { display: none; }
+.noscript { margin: 0; color: var(--core-black); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* Windows high contrast removes background colours, so keep the selected state visible. */
+@media (forced-colors: active) {
+  .option input:checked + .face { outline: 3px solid Highlight; outline-offset: -3px; }
+  .mark svg { stroke: CanvasText; }
+  .option input:checked + .face .mark { background: Canvas; }
+  .btn, .motion-toggle { border: 2px solid ButtonText; }
+}
