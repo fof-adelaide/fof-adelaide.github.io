@@ -57,7 +57,7 @@ A selected chip keeps its black border, so a Lime chip doesn't lose its edge on 
 | 2.4.2 Page titled | The title changes with each step, for example "Question 2 of 4: Friends of Figma Adelaide" |
 | 2.4.3 Focus order | Options, then Back, then Next or Send, then the Pause button. Focus moves to the heading on each new step |
 | 2.4.7, 2.4.11 Focus | Every control shows a clear focus style, and nothing covers it |
-| 2.5.7 Dragging | Dragging only throws stickers, and tapping one also works |
+| 2.5.7 Dragging | Dragging only throws stickers, which are decoration, so nothing on the page depends on it |
 | 2.5.8 Target size | The smallest target is the 44 px Back and Pause buttons, against a minimum of 24. Chips are 48 px high |
 | 3.3.1, 3.3.3 Errors | Every error says what's wrong and how to fix it, moves focus to the problem, and links to it with `aria-invalid` and `aria-describedby`. Both clear once it's fixed |
 | 3.3.2 Labels | Each question is its label, and Something else has its own visible label. Required fields are marked as required |

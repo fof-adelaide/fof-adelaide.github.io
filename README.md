@@ -1,6 +1,6 @@
 # Friends of Figma Adelaide: event ideas microsite
 
-A four-question form that sits on top of the video's stickers, running live. Stickers fall in, then react to the mouse and can be tapped and thrown. Answers go to a Google Sheet.
+A four-question form that sits on top of the video's stickers, running live. Stickers fall in, then can be dragged and thrown with a mouse or a finger. Answers go to a Google Sheet.
 
 It's a static site with no build step, so it can go on any host.
 
@@ -25,7 +25,7 @@ Renaming an option doesn't need the Apps Script redeployed. It only changes what
 
 ## Change how the stickers feel
 
-The settings are in `P` at the top of `scene.js`. The squash, stretch and spring match the video's Sensible preset. The weight, rebound and mouse are tuned for playing with, so those differ from the video on purpose.
+The settings are in `P` at the top of `scene.js`. The squash, stretch and spring match the video's Sensible preset. The weight and rebound are tuned for playing with, so those differ from the video on purpose. Gravity also eases off on smaller screens, down to 45% on a phone, and throws scale with it so stickers still rise about the same height.
 
 | Setting | What it does |
 |---|---|
@@ -35,7 +35,6 @@ The settings are in `P` at the top of `scene.js`. The squash, stretch and spring
 | `squash`, `stretch` | How much stickers deform on a hit and in flight, the same as the video |
 | `stiffness`, `wobbleDamping` | How quickly the deforming springs back and settles, the same as the video |
 | `contactDrag`, `contactSpinDrag` | How quickly touching stickers calm down |
-| `cursorPush` | How much speed a sticker picks up from the mouse |
 | `grabSpeed`, `grabMax`, `throwKeep` | How a dragged sticker follows, and how much speed it keeps when let go |
 
 The base size is set in `layout()`, and the number of stickers in `startingCount()`. The stickers that fall at the start are all there are: pressing buttons doesn't add more.

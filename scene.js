@@ -1,4 +1,4 @@
-/* The live sticker background. Same stickers as the video, running in real time so people can sweep, throw and tap them.
+/* The live sticker background. Same stickers as the video, running in real time so people can drag and throw them.
    form.js talks to it through window.FOFScene. */
 (function () {
   'use strict';
@@ -16,7 +16,7 @@
 
   const TAU = Math.PI * 2, HZ = 120, DT = 1 / HZ, DT_MS = 1000 / HZ;
   const BG = '#1E1E1E';
-  // The squash, stretch and spring settings are the video's Sensible preset. The weight, rebound and mouse are tuned for playing with.
+  // The squash, stretch and spring settings are the video's Sensible preset. The weight and rebound are tuned for playing with.
   const P = {
     gravity: 3800, friction: 0.6, airDrag: 0.002, spin: 100, heft: 1.6, // heft: resistance to spinning
     stickerScale: 0.88, sizeVariance: 0.04, // Stickers stay close to one size, within 4% of this share of S.
@@ -24,7 +24,6 @@
     contactHold: 0.015, // Seconds a sticker stays down before it rebounds, as in the video.
     squash: 0.35, stretch: 0.05, stiffness: 8.9, wobbleDamping: 0.85, // As in the video: small, stiff and quickly over.
     contactDrag: 5, contactSpinDrag: 9, // How quickly touching stickers lose speed and spin. This is what calms a pile.
-    cursorPush: 1.2, // How much of the cursor's speed a sticker can pick up, before it fades with distance from the cursor.
     grabSpeed: 16, grabMax: 2200, throwKeep: 0.72, // How a dragged sticker follows, and how much speed it keeps when let go.
   };
   const PAIRS = ['Coral + Purple', 'Coral + Dark Blue', 'Lime + Dark Blue', 'Lime + Purple', 'Kelly Green + Dark Blue', 'Teal + Purple', 'Purple + Lime'].map((name) => ASSETS.combos[name]);
@@ -50,7 +49,7 @@
   const byId = new Map();
   const wakeAll = () => { for (const m of items) Sleeping.set(m.body, false); };
 
-  let W = 0, H = 0, DPR = 1, S = 190;
+  let W = 0, H = 0, DPR = 1, S = 190, fall = 1, toss = 1;
   let dirty = true, paused = false;
 
   function layout() {
@@ -58,6 +57,10 @@
     DPR = Math.min(window.devicePixelRatio || 1, 2);
     for (const c of [canvas, fxCanvas]) { c.width = Math.round(W * DPR); c.height = Math.round(H * DPR); }
     S = W >= 900 ? clamp(W * 0.107, 90, 158) : clamp(W * 0.135, 100, 200);
+    // Small screens get gentler gravity. The same pull looks far faster there, and the card hides most of the fall.
+    fall = clamp(W / 900, 0.45, 1);
+    toss = Math.sqrt(fall); // Throws scale with this, so a sticker still rises the same distance under gentler gravity.
+    engine.gravity.scale = (P.gravity * fall) / 1e6;
     Body.setPosition(floor, { x: W / 2, y: H + WALL / 2 });
     Body.setPosition(leftWall, { x: -WALL / 2, y: H / 2 - 5000 });
     Body.setPosition(rightWall, { x: W + WALL / 2, y: H / 2 - 5000 });
@@ -329,7 +332,7 @@
       const dx = b.position.x - x, dy = b.position.y - y;
       const d = Math.sqrt(dx * dx + dy * dy) || 1;
       if (d > radius) continue;
-      const force = strength * (1 - d / radius);
+      const force = strength * (1 - d / radius) * toss;
       Sleeping.set(b, false);
       const v = vel(b);
       setVel(b, v.x + (dx / d) * force * 0.75, v.y + (dy / d) * force * 0.35 - force * upBias);
@@ -338,9 +341,9 @@
     }
   }
 
-  /* ---------- Pointer: shove with the mouse, throw with a drag, pop with a tap ---------- */
-  const pointer = { x: 0, y: 0, t: 0, vx: 0, vy: 0, fresh: false, hoverCheck: false };
-  let grabbed = null, press = null;
+  /* ---------- Pointer: stickers only move when they're dragged ---------- */
+  const pointer = { x: 0, y: 0, hoverCheck: false };
+  let grabbed = null;
   const grabTarget = { x: 0, y: 0 };
   const hitTest = (x, y) => {
     const hits = Query.point(items.map((m) => m.body), { x, y });
@@ -349,94 +352,44 @@
     return hits.map((b) => byId.get(b.id)).sort((p, q) => items.indexOf(q) - items.indexOf(p))[0];
   };
 
-  // The cursor shoves stickers up to a share of its own speed, and that speed builds over a moment, the way it does
-  // with something heavy. Bigger stickers pick up less, and lifting is harder than sliding.
-  function applySweep(elapsed) {
-    if (!pointer.fresh) return;
-    pointer.fresh = false;
-    const speed = Math.hypot(pointer.vx, pointer.vy);
-    if (speed < 150) return;
-    const ux = pointer.vx / speed, uy = pointer.vy / speed;
-    const radius = S * 0.65 + 24;
-    const cursorSpeed = Math.min(speed, 1800);
-    const ease = 1 - Math.exp(-elapsed / 30);
-    for (const m of items) {
-      if (m === grabbed) continue;
-      const b = m.body;
-      const dx = b.position.x - pointer.x, dy = b.position.y - pointer.y;
-      const d = Math.hypot(dx, dy) || 1;
-      if (d > radius) continue;
-      if (dx * ux + dy * uy < -0.25 * d) continue; // It only pushes what's in front of it, not what it just passed.
-      const f = 1 - d / radius;
-      const weight = clamp((S * S) / (m.w * m.h), 0.4, 1);
-      const target = cursorSpeed * P.cursorPush * f * weight;
-      const v = vel(b);
-      const along = v.x * ux + v.y * uy;
-      if (along >= target) continue;
-      const kick = (target - along) * ease;
-      Sleeping.set(b, false);
-      setVel(b, v.x + ux * kick, v.y + uy * kick * (uy < 0 ? 0.5 : 1));
-      Body.setAngularVelocity(b, Body.getAngularVelocity(b) + ((ux * dy - uy * dx) / radius) * (kick / 14000));
-      squish(m, -ux, -uy, kick * 1.1);
-    }
-  }
-
   function bindPointer() {
     window.addEventListener('pointermove', (e) => {
-      const now = performance.now();
-      const dt = Math.max(8, now - pointer.t);
-      if (e.pointerType === 'mouse') {
-        pointer.vx = ((e.clientX - pointer.x) / dt) * 1000;
-        pointer.vy = ((e.clientY - pointer.y) / dt) * 1000;
-        pointer.fresh = pointer.t > 0;
-        pointer.hoverCheck = e.target === canvas;
-      }
-      pointer.x = e.clientX; pointer.y = e.clientY; pointer.t = now;
+      if (e.pointerType === 'mouse') pointer.hoverCheck = e.target === canvas;
+      pointer.x = e.clientX; pointer.y = e.clientY;
       if (grabbed) { grabTarget.x = e.clientX - grabbed.grabX; grabTarget.y = e.clientY - grabbed.grabY; }
     }, { passive: true });
+
+    // A finger on a sticker drags it in any direction. A finger on the background still scrolls the page.
+    canvas.addEventListener('touchstart', (e) => {
+      const touch = e.changedTouches[0];
+      if (!paused && hitTest(touch.clientX, touch.clientY)) e.preventDefault();
+    }, { passive: false });
 
     canvas.addEventListener('pointerdown', (e) => {
       if (paused) return;
       const hit = hitTest(e.clientX, e.clientY);
-      press = { x: e.clientX, y: e.clientY, t: performance.now(), hit };
-      if (hit) {
-        grabbed = hit;
-        grabbed.grabX = e.clientX - hit.body.position.x;
-        grabbed.grabY = e.clientY - hit.body.position.y;
-        grabTarget.x = hit.body.position.x; grabTarget.y = hit.body.position.y;
-        Sleeping.set(hit.body, false);
-        try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* The pointer may already be gone */ }
-        canvas.style.cursor = 'grabbing';
-      }
+      if (!hit) return;
+      grabbed = hit;
+      grabbed.grabX = e.clientX - hit.body.position.x;
+      grabbed.grabY = e.clientY - hit.body.position.y;
+      grabTarget.x = hit.body.position.x; grabTarget.y = hit.body.position.y;
+      Sleeping.set(hit.body, false);
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* The pointer may already be gone */ }
+      canvas.style.cursor = 'grabbing';
     });
 
-    const release = (e, cancelled) => {
-      const tapped = press && !cancelled && performance.now() - press.t < 260 && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 8;
-      if (tapped) {
-        if (press.hit) {
-          // A poke: it squishes under the finger, then pops up.
-          const m = press.hit;
-          squish(m, 0, 1, 1500);
-          m.bx += rand(-140, 140);
-          m.by -= rand(1250, 1550);
-          m.bAt = simT + P.contactHold;
-          Body.setAngularVelocity(m.body, Body.getAngularVelocity(m.body) + rand(-0.1, 0.1));
-          shockwave(press.x, press.y, S * 1.6, 120, 0.3);
-        } else {
-          shockwave(press.x, press.y, Math.max(320, S * 2.6), 850, 0.55);
-          burst(press.x, press.y, 8, 620, 0.8);
-        }
-      } else if (grabbed) {
+    const release = () => {
+      if (grabbed) {
         // A throw keeps only part of the drag's speed.
         const v = vel(grabbed.body);
         setVel(grabbed.body, v.x * P.throwKeep, v.y * P.throwKeep);
       }
-      grabbed = null; press = null;
+      grabbed = null;
       canvas.style.cursor = '';
       dirty = true;
     };
-    canvas.addEventListener('pointerup', (e) => release(e, false));
-    canvas.addEventListener('pointercancel', (e) => release(e, true));
+    canvas.addEventListener('pointerup', release);
+    canvas.addEventListener('pointercancel', release);
   }
 
   /* ---------- Squiggle confetti, on its own canvas above the card ---------- */
@@ -506,8 +459,8 @@
     simT += DT;
     if (grabbed) {
       const b = grabbed.body;
-      const vx = clamp((grabTarget.x - b.position.x) * P.grabSpeed, -P.grabMax, P.grabMax);
-      const vy = clamp((grabTarget.y - b.position.y) * P.grabSpeed, -P.grabMax, P.grabMax);
+      const vx = clamp((grabTarget.x - b.position.x) * P.grabSpeed, -P.grabMax * toss, P.grabMax * toss);
+      const vy = clamp((grabTarget.y - b.position.y) * P.grabSpeed, -P.grabMax * toss, P.grabMax * toss);
       setVel(b, vx, vy);
       Body.setAngularVelocity(b, Body.getAngularVelocity(b) * 0.97);
     }
@@ -581,7 +534,6 @@
       addSticker(waiting.shift());
       nextFall = now + fallGap;
     }
-    applySweep(elapsed);
     if (pointer.hoverCheck && !grabbed) {
       pointer.hoverCheck = false;
       canvas.style.cursor = hitTest(pointer.x, pointer.y) ? 'grab' : '';
@@ -636,13 +588,12 @@
       paused = !!on;
       if (paused) {
         bits = [];
-        grabbed = null; press = null;
+        grabbed = null;
         clearConfetti();
         canvas.style.cursor = '';
       } else {
         syncSolids();
         wakeAll();
-        pointer.fresh = false;
         last = performance.now();
       }
       dirty = true;
