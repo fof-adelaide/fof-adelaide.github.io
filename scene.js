@@ -16,16 +16,13 @@
 
   const TAU = Math.PI * 2, HZ = 120, DT = 1 / HZ, DT_MS = 1000 / HZ;
   const BG = '#1E1E1E';
-  // The same stickers as the video, but heavier and softer, because here people get to play with them.
+  // The squash, stretch and spring settings are the video's Sensible preset. The weight, rebound and mouse are tuned for playing with.
   const P = {
     gravity: 3800, friction: 0.6, airDrag: 0.002, spin: 100, heft: 1.6, // heft: resistance to spinning
     stickerScale: 0.88, sizeVariance: 0.04, // Stickers stay close to one size, within 4% of this share of S.
-    bounce: 0.45, // The share of a landing's speed that comes back as a rebound.
-    holdDown: 0.09, // Seconds a sticker stays down, squishing, before it rebounds.
-    squish: 0.17, // How far the hardest landing compresses a sticker, as a share of its size.
-    bulge: 0.9, // How much more the middle swells than the ends.
-    stretch: 0.045, // How far a sticker stretches along its path at full speed.
-    wobbleHz: 2.4, wobbleDamping: 0.24, // Lower numbers are softer, slower and longer.
+    bounce: 0.45, // The share of a landing's speed that comes back as a rebound. The video uses 0.55.
+    contactHold: 0.015, // Seconds a sticker stays down before it rebounds, as in the video.
+    squash: 0.35, stretch: 0.05, stiffness: 8.9, wobbleDamping: 0.85, // As in the video: small, stiff and quickly over.
     contactDrag: 5, contactSpinDrag: 9, // How quickly touching stickers lose speed and spin. This is what calms a pile.
     cursorPush: 1.2, // How much of the cursor's speed a sticker can pick up, before it fades with distance from the cursor.
     grabSpeed: 16, grabMax: 2200, throwKeep: 0.72, // How a dragged sticker follows, and how much speed it keeps when let go.
@@ -242,17 +239,16 @@
     return m;
   }
 
-  /* ---------- Soft bodies, for drawing only. The physics underneath stays rigid. ----------
-     Each sticker's squish is held as one small tensor, in the sticker's own frame, on a slow spring. Hits from any
-     direction simply add together, so the squish never has to snap from one axis to another. */
-  const w0 = TAU * P.wobbleHz, zeta = P.wobbleDamping;
+  /* ---------- Squash and stretch, for drawing only. The physics underneath stays rigid. ----------
+     The amounts match the video. Each sticker's squash is held as one small tensor, in the sticker's own frame, so hits
+     from any direction simply add together and it never has to snap from one axis to another. */
+  const w0 = TAU * P.stiffness, zeta = P.wobbleDamping;
   const CONTACT_DRAG = Math.exp(-P.contactDrag * DT), CONTACT_SPIN_DRAG = Math.exp(-P.contactSpinDrag * DT);
-  const FIRST_PEAK = Math.exp((-zeta / Math.sqrt(1 - zeta * zeta)) * Math.acos(zeta)); // Lets P.squish mean what it says
-  const MAX_SQUISH = 0.2;
+  const MAX_SQUISH = 0.12;
 
   // n points from the sticker towards whatever is pressing on it.
   function squish(m, nx, ny, speed) {
-    const push = (P.squish * Math.tanh(speed / 1500) * w0) / FIRST_PEAK;
+    const push = 0.35 * P.squash * Math.min(1, speed / 2000) * w0;
     const c = Math.cos(m.body.angle), s = Math.sin(m.body.angle);
     const lx = nx * c + ny * s, ly = ny * c - nx * s;
     // Press along n, swell across it.
@@ -270,7 +266,7 @@
     // In the air it eases towards a slight stretch along its path.
     let ta = 0, tb = 0;
     if (!m.touching && speed > 200) {
-      const amount = P.stretch * Math.min(1, speed / 3000);
+      const amount = P.stretch * 0.5 * Math.min(1, speed / 3000);
       const th = 2 * (Math.atan2(b.velocity.y, b.velocity.x) - b.angle);
       ta = amount * Math.cos(th); tb = amount * Math.sin(th);
     }
@@ -293,15 +289,14 @@
     m.a += (b.angle - m.a) * turn;
   }
 
-  // Landings are dead in the solver, which keeps resting and rubbing contacts calm. A real hit squishes first
-  // and rebounds a moment later, as the squish recovers. That delay is most of what makes them feel soft.
+  // Landings are dead in the solver, which keeps resting and rubbing contacts calm. A real hit rebounds a moment later.
   function hit(m, nx, ny, vn, share) {
     squish(m, nx, ny, vn);
     const rebound = P.bounce * vn * share * clamp((vn - 300) / 500, 0, 1);
     if (rebound <= 0) return;
     m.bx -= nx * rebound;
     m.by -= ny * rebound;
-    if (!m.bAt) m.bAt = simT + P.holdDown;
+    if (!m.bAt) m.bAt = simT + P.contactHold;
   }
 
   let simT = 0;
@@ -424,7 +419,7 @@
           squish(m, 0, 1, 1500);
           m.bx += rand(-140, 140);
           m.by -= rand(1250, 1550);
-          m.bAt = simT + P.holdDown;
+          m.bAt = simT + P.contactHold;
           Body.setAngularVelocity(m.body, Body.getAngularVelocity(m.body) + rand(-0.1, 0.1));
           shockwave(press.x, press.y, S * 1.6, 120, 0.3);
         } else {
@@ -547,53 +542,11 @@
   };
   const isLively = () => grabbed || !items.every(atRest);
 
-  /* A sticker with any real squish is drawn through a mesh, so the swelling can vary across the shape: the middle
-     bulges and the ends stay closer to their size. Below that, one flat stretch looks the same and costs far less. */
-  const GRID = 8, OVERLAP = 1, MESH_FROM = 0.02;
-  const meshX = new Float32Array((GRID + 1) * (GRID + 1)), meshY = new Float32Array((GRID + 1) * (GRID + 1));
-
   function drawSticker(m) {
     const c = Math.cos(m.a), s = Math.sin(m.a);
-    const A = DPR * c, B = DPR * s, C = -DPR * s, D = DPR * c, E = DPR * m.x, F = DPR * m.y;
-    const amount = Math.hypot(m.sa, m.sb);
-    if (amount < MESH_FROM) {
-      ctx.setTransform(A, B, C, D, E, F);
-      ctx.transform(1 + m.sa, m.sb, m.sb, 1 - m.sa, m.lx, m.ly);
-      ctx.drawImage(m.sprite, -m.cx, -m.cy, m.w, m.h);
-      return;
-    }
-    // The axis it's swelling along, and how far the shape reaches along the axis it's pressed on.
-    const th = 0.5 * Math.atan2(m.sb, m.sa), ex = Math.cos(th), ey = Math.sin(th);
-    const reach = (Math.abs(ey) * m.w + Math.abs(ex) * m.h) / 2;
-    const cw = m.w / GRID, ch = m.h / GRID;
-    for (let j = 0, n = 0; j <= GRID; j++) {
-      const y = j * ch - m.cy;
-      for (let i = 0; i <= GRID; i++, n++) {
-        const x = i * cw - m.cx;
-        const along = x * ex + y * ey, across = y * ex - x * ey;
-        const t = across / reach;
-        const swell = along * (1 + amount * (1 + P.bulge * (1 / 3 - t * t)));
-        const press = across * (1 - amount);
-        meshX[n] = swell * ex - press * ey + m.lx;
-        meshY[n] = swell * ey + press * ex + m.ly;
-      }
-    }
-    // Each cell is drawn as the flat shape closest to its four corners. The overlap covers what's left of the difference.
-    const sx = m.sprite.width / m.w, sy = m.sprite.height / m.h, row = GRID + 1;
-    for (let j = 0; j < GRID; j++) {
-      for (let i = 0; i < GRID; i++) {
-        const p = j * row + i, q = p + 1, r = p + row, u = r + 1;
-        const a = (meshX[q] - meshX[p] + meshX[u] - meshX[r]) / (2 * cw);
-        const b = (meshY[q] - meshY[p] + meshY[u] - meshY[r]) / (2 * cw);
-        const e = (meshX[r] - meshX[p] + meshX[u] - meshX[q]) / (2 * ch);
-        const f = (meshY[r] - meshY[p] + meshY[u] - meshY[q]) / (2 * ch);
-        const ox = (meshX[p] + meshX[q] + meshX[r] + meshX[u]) / 4 - (a * cw + e * ch) / 2;
-        const oy = (meshY[p] + meshY[q] + meshY[r] + meshY[u]) / 4 - (b * cw + f * ch) / 2;
-        ctx.setTransform(A * a + C * b, B * a + D * b, A * e + C * f, B * e + D * f, A * ox + C * oy + E, B * ox + D * oy + F);
-        const dw = i < GRID - 1 ? cw + OVERLAP : cw, dh = j < GRID - 1 ? ch + OVERLAP : ch;
-        ctx.drawImage(m.sprite, i * cw * sx, j * ch * sy, dw * sx, dh * sy, 0, 0, dw, dh);
-      }
-    }
+    ctx.setTransform(DPR * c, DPR * s, -DPR * s, DPR * c, DPR * m.x, DPR * m.y);
+    ctx.transform(1 + m.sa, m.sb, m.sb, 1 - m.sa, m.lx, m.ly);
+    ctx.drawImage(m.sprite, -m.cx, -m.cy, m.w, m.h);
   }
 
   function draw() {

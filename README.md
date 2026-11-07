@@ -25,15 +25,15 @@ Renaming an option doesn't need the Apps Script redeployed. It only changes what
 
 ## Change how the stickers feel
 
-The settings are in `P` at the top of `scene.js`. They started from the video's Sensible preset, but they're heavier and softer on purpose, so the site and the video no longer match.
+The settings are in `P` at the top of `scene.js`. The squash, stretch and spring match the video's Sensible preset. The weight, rebound and mouse are tuned for playing with, so those differ from the video on purpose.
 
 | Setting | What it does |
 |---|---|
 | `stickerScale`, `sizeVariance` | How big stickers are, as a share of the size set in `layout()`, and how much they vary |
 | `gravity`, `heft` | How fast stickers fall, and how much they resist spinning |
-| `bounce`, `holdDown` | How high a rebound goes, and how long a sticker stays down before it rebounds |
-| `squish`, `bulge` | How far the hardest landing compresses a sticker, and how much more the middle swells than the ends |
-| `wobbleHz`, `wobbleDamping` | How slow and how long the wobble is. Lower numbers are softer |
+| `bounce`, `contactHold` | How high a rebound goes, and how long a sticker stays down before it rebounds. The video's `bounce` is 0.55 |
+| `squash`, `stretch` | How much stickers deform on a hit and in flight, the same as the video |
+| `stiffness`, `wobbleDamping` | How quickly the deforming springs back and settles, the same as the video |
 | `contactDrag`, `contactSpinDrag` | How quickly touching stickers calm down |
 | `cursorPush` | How much speed a sticker picks up from the mouse |
 | `grabSpeed`, `grabMax`, `throwKeep` | How a dragged sticker follows, and how much speed it keeps when let go |
@@ -79,7 +79,7 @@ Figma Sans isn't in this repo. The Adelaide label in the lockup is Figma Sans ou
 |---|---|
 | `config.js` | The Sheets URL and all the wording |
 | `form.js` | The steps, validation, sending and thanks message |
-| `scene.js` | The live physics, the soft sticker drawing and the confetti |
+| `scene.js` | The live physics, the squash and stretch, and the confetti |
 | `site.css` | Tokens that mirror the Figma file, then the layout |
 | `sheets/Code.gs` | The script that saves answers to the Sheet |
 | `data/`, `assets/`, `vendor/` | Generated from the same sources as the video, including the sunburst on the thanks card and the chapter badge favicon |
