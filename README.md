@@ -61,7 +61,7 @@ A new Sheet defaults to US time, so set **File → Settings → Time zone** to A
 
 ## Put it online
 
-The site is on GitHub Pages, in the public repo `hikarikami/fof-adelaide`, at https://hikarikami.github.io/fof-adelaide/. Pages serves the default branch, so pushing updates the site. Every path is relative, and `.nojekyll` tells Pages to serve the files as they are.
+The site is on GitHub Pages, in the public repo `fof-adelaide/fof-adelaide.github.io`, at https://fof-adelaide.github.io/. Pages serves the default branch, so pushing updates the site. Every path is relative, and `.nojekyll` tells Pages to serve the files as they are.
 
 **Only this folder goes in the repo.** The rest of the project holds font files, brand-guide material and photos of real people.
 
