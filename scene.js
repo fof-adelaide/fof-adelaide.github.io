@@ -196,19 +196,18 @@
     return clamp(Math.round(free / (S * S * 1.52)), 9, room ? 30 : 12);
   };
 
-  let inFlight = 0;
-  async function spawn(options) {
-    const opts = options || {};
-    inFlight++;
+  // Gets a sticker's image ready. That takes a moment, so they're all prepared before the first one falls.
+  async function prepareSticker() {
     const sticker = nextSticker();
     const pair = pick(PAIRS);
     let k = (S / 200) * P.stickerScale * (1 + P.sizeVariance * rand(-1, 1));
     k = Math.min(k, (S * 1.45) / sticker.w); // The widest shapes would otherwise look much bigger than the rest.
     const w = sticker.w * k, h = sticker.h * k;
-    let sprite;
-    try { sprite = await makeSprite(sticker, pair, w, h); }
-    catch (e) { inFlight--; return null; }
-    inFlight--;
+    try { return { sticker, k, w, h, sprite: await makeSprite(sticker, pair, w, h) }; }
+    catch (e) { return null; }
+  }
+
+  function addSticker({ sticker, k, w, h, sprite }, y) {
     const under = goesUnder(Math.max(w, h));
     dropped++;
     if (under) droppedUnder++;
@@ -218,7 +217,7 @@
     const verts = Vertices.clockwiseSort(sticker.hull.map(([vx, vy]) => ({ x: vx * k, y: vy * k })));
     const centre = Vertices.centre(verts);
     const body = Body.create({
-      position: { x, y: opts.y !== undefined ? opts.y : -Math.max(w, h) * 0.62 - 30 },
+      position: { x, y: y !== undefined ? y : -Math.max(w, h) * 0.62 - 30 },
       vertices: verts,
       friction: P.friction, frictionStatic: P.friction * 1.1, frictionAir: P.airDrag,
       restitution: 0, density: 0.001, slop: 0.8, // Rebounds are added by hit(). A little slop lets a pile rest without fidgeting.
@@ -605,10 +604,14 @@
     for (const m of items) drawSticker(m);
   }
 
-  const pending = [];
-  function enqueue(count, gapMs, delayMs) {
-    let at = performance.now() + (delayMs || 0);
-    for (let i = 0; i < count; i++) { pending.push(at); at += typeof gapMs === 'function' ? gapMs(i) : gapMs; }
+  // The starting stickers fall one at a time, at a steady pace, over about this long.
+  const FALL_SECONDS = 4.2;
+  let waiting = [], nextFall = 0, fallGap = 0;
+  async function startFalling() {
+    const ready = await Promise.all(Array.from({ length: startingCount() }, prepareSticker));
+    waiting = ready.filter(Boolean);
+    fallGap = clamp((FALL_SECONDS * 1000) / Math.max(1, waiting.length), 120, 240);
+    nextFall = performance.now();
   }
 
   let last = 0, carry = 0;
@@ -621,7 +624,10 @@
       return;
     }
     syncSolids();
-    while (pending.length && pending[0] <= now) { pending.shift(); spawn(); }
+    if (waiting.length && now >= nextFall) {
+      addSticker(waiting.shift());
+      nextFall = now + fallGap;
+    }
     applySweep(elapsed);
     if (pointer.hoverCheck && !grabbed) {
       pointer.hoverCheck = false;
@@ -647,10 +653,8 @@
   }
   async function drawStillPile() {
     syncSolids();
-    const count = startingCount();
-    const spawned = [];
-    for (let i = 0; i < count; i++) spawned.push(spawn({ y: -S * (1.2 * i + 1) }));
-    await Promise.all(spawned);
+    const ready = await Promise.all(Array.from({ length: startingCount() }, prepareSticker));
+    ready.filter(Boolean).forEach((sticker, i) => addSticker(sticker, -S * (1.2 * i + 1)));
     settle(8);
     draw();
   }
@@ -669,8 +673,7 @@
       if (paused) {
         drawStillPile();
       } else {
-        // The video's rhythm: one, another, a pause, then the bunch.
-        enqueue(startingCount(), (i) => (i < 2 ? 650 : i === 2 ? 800 : 145), 350);
+        startFalling();
       }
       last = performance.now();
       window.requestAnimationFrame(frame);
@@ -679,7 +682,6 @@
     setPaused(on) {
       paused = !!on;
       if (paused) {
-        pending.length = 0;
         bits = [];
         grabbed = null; press = null;
         clearConfetti();
@@ -688,9 +690,6 @@
         syncSolids();
         wakeAll();
         pointer.fresh = false;
-        // Anything that was still due to fall when the pause came goes now.
-        const missing = startingCount() - items.length - inFlight;
-        if (missing > 0) enqueue(missing, 145, 0);
         last = performance.now();
       }
       dirty = true;
