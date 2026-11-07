@@ -467,11 +467,14 @@
     Engine.update(engine, DT_MS);
     for (const m of items) {
       const b = m.body;
-      // Touching stickers lose speed and spin, the way soft things do, so a pile calms down instead of rattling.
+      // Slow, touching stickers lose a little more speed and spin, so a pile calms down instead of rattling. It fades out with
+      // speed, so a sticker falling or sliding past others doesn't drag through them like syrup.
       if (m.touching && m !== grabbed && !b.isSleeping) {
-        Body.setVelocity(b, { x: b.velocity.x * CONTACT_DRAG, y: b.velocity.y * CONTACT_DRAG });
-        Body.setAngularVelocity(b, Body.getAngularVelocity(b) * CONTACT_SPIN_DRAG);
+        const calm = clamp(1 - (b.speed * 60) / 150, 0, 1), spinCalm = clamp(1 - (Math.abs(b.angularVelocity) * 60) / 3, 0, 1);
+        if (calm > 0) Body.setVelocity(b, { x: b.velocity.x * (1 - (1 - CONTACT_DRAG) * calm), y: b.velocity.y * (1 - (1 - CONTACT_DRAG) * calm) });
+        if (spinCalm > 0) Body.setAngularVelocity(b, Body.getAngularVelocity(b) * (1 - (1 - CONTACT_SPIN_DRAG) * spinCalm));
       }
+      if (b === (grabbed && grabbed.body)) Sleeping.set(b, false); // A held sticker never dozes off mid-air.
       if (m.bAt && simT >= m.bAt) {
         if (m !== grabbed) {
           const v = vel(b);
